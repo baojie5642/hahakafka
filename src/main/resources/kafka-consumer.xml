@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:mongo="http://www.springframework.org/schema/data/mongo"
+	xmlns:jpa="http://www.springframework.org/schema/data/jpa"
+	xsi:schemaLocation=
+	"http://www.springframework.org/schema/context
+	http://www.springframework.org/schema/context/spring-context-3.0.xsd
+	http://www.springframework.org/schema/data/mongo
+	http://www.springframework.org/schema/data/mongo/spring-mongo-1.0.xsd
+	http://www.springframework.org/schema/beans
+	http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+	http://www.springframework.org/schema/data/jpa 
+	http://www.springframework.org/schema/data/jpa/spring-jpa.xsd">
+	
+	<context:annotation-config />
+	<context:property-placeholder location="classpath:kafka.properties" />
+	<context:component-scan base-package="hahakafka.consumer" />
+	
+	<mongo:repositories base-package="hahakafka.consumer.like" />
+	
+	<!-- Default bean name is 'mongo' -->
+	<mongo:mongo host="192.168.1.111" port="27017"/>
+    
+	<bean id="mongoTemplate" class="org.springframework.data.mongodb.core.MongoTemplate">
+		<constructor-arg ref="mongo"/>
+		<constructor-arg name="databaseName" value="test"/>
+	</bean>
+	
+	
+	
+	
+	
+
+	<!-- 定义consumer的参数 -->
+	<bean id="consumerProperties" class="java.util.HashMap">
+		<constructor-arg>
+			<map>
+				<entry key="bootstrap.servers" value="192.168.1.111:9092" />
+				<!-- ${bootstrap.servers} -->
+				<entry key="group.id" value="consumer-tutorial" />
+				<entry key="enable.auto.commit" value="true" />
+				<entry key="auto.commit.interval.ms" value="1000" />
+				<entry key="session.timeout.ms" value="15000" />
+				<entry key="key.deserializer"
+					value="org.apache.kafka.common.serialization.StringDeserializer" />
+				<entry key="value.deserializer"
+					value="org.apache.kafka.common.serialization.StringDeserializer" />
+			</map>
+		</constructor-arg>
+	</bean>
+
+	<!-- 创建consumerFactory bean -->
+	<bean id="consumerFactory"
+		class="org.springframework.kafka.core.DefaultKafkaConsumerFactory">
+		<constructor-arg>
+			<ref bean="consumerProperties" />
+		</constructor-arg>
+	</bean>
+
+	<!-- 实际执行消息消费的类 -->
+	<bean id="messageListernerConsumerService" class="hahakafka.consumer.KafkaConsumerListener" />
+
+	<!-- 消费者容器配置信息 -->
+	<bean id="containerProperties"
+		class="org.springframework.kafka.listener.config.ContainerProperties">
+		<constructor-arg value="test" />
+		<property name="messageListener" ref="messageListernerConsumerService" />
+	</bean>
+
+	<!-- 创建kafkatemplate bean，使用的时候，只需要注入这个bean，即可使用template的send消息方法 -->
+	<bean id="messageListenerContainer"
+		class="org.springframework.kafka.listener.KafkaMessageListenerContainer"
+		init-method="doStart">
+		<constructor-arg ref="consumerFactory" />
+		<constructor-arg ref="containerProperties" />
+	</bean>
+		
+</beans>
